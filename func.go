@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	fdk "github.com/fnproject/fdk-go"
 	"github.com/oracle/oci-go-sdk/v27/common"
 	"github.com/oracle/oci-go-sdk/v27/common/auth"
 	"github.com/oracle/oci-go-sdk/v27/loadbalancer"
@@ -24,8 +25,11 @@ const (
 )
 
 func main() {
-	//	fdk.Handle(fdk.HandlerFunc(myHandler))
-	myHandler(nil, nil, nil)
+	if _, b := os.LookupEnv("FN_LISTENER"); !b {
+		myHandler(nil, nil, nil)
+		return
+	}
+	fdk.Handle(fdk.HandlerFunc(myHandler))
 }
 
 func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
@@ -63,7 +67,12 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	if err != nil {
 		panic(err)
 	}
+	defer osresp.Content.Close()
+	defer zr.Close()
 	tr := tar.NewReader(zr)
+	pems := make(map[string]string)
+	live := make(map[string]string)
+	buf := new(strings.Builder)
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -72,13 +81,21 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(hdr.Name)
-		if strings.HasSuffix(hdr.Name, "fullchain.pem") {
-			fmt.Println(hdr.Linkname)
-			if _, err := io.Copy(os.Stdout, tr); err != nil {
+		if strings.HasSuffix(hdr.Name, ".pem") {
+			k := strings.SplitN(hdr.Name, "/", 3)[2]
+			if hdr.Typeflag == tar.TypeSymlink {
+				live[k] = strings.SplitN(hdr.Linkname, "/", 3)[2]
+				continue
+			}
+			buf.Reset()
+			if _, err := io.Copy(buf, tr); err != nil {
 				panic(err)
 			}
+			pems[k] = buf.String()
 		}
+	}
+	for k, v := range live {
+		fmt.Printf("%s: %s\n", k, pems[v])
 	}
 
 	lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(cp)
