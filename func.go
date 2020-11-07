@@ -94,9 +94,23 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 			pems[k] = buf.String()
 		}
 	}
+	var cert string
+	var privkey string
 	for k, v := range live {
-		fmt.Printf("%s: %s\n", k, pems[v])
+		if strings.HasSuffix(k, "fullchain.pem") {
+			cert = pems[v]
+		} else if strings.HasSuffix(k, "privkey.pem") {
+			privkey = pems[v]
+		}
 	}
+	if len(cert) == 0 {
+		panic("Unable to find certificate in archive")
+	}
+	if len(privkey) == 0 {
+		panic("Unable to find private key in archive")
+	}
+	fmt.Println(cert)
+	fmt.Println(privkey)
 
 	lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(cp)
 	if err != nil {
