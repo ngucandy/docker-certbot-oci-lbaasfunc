@@ -1,0 +1,13 @@
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/fnproject/fdk-go v0.0.3 h1:CkUsIH0QmWDb/vDU3lGoP+Fl0VIfk2/xi1v82Qk5vCs=
+github.com/fnproject/fdk-go v0.0.3/go.mod h1:9m+nEyku9SqJAVJQsfZOZBQzFkCs+jvmbZJhvgDX4ts=
+github.com/oracle/oci-go-sdk v1.8.0 h1:4SO45bKV0I3/Mn1os3ANDZmV0eSE5z5CLdSUIkxtyzs=
+github.com/oracle/oci-go-sdk v24.3.0+incompatible h1:x4mcfb4agelf1O4/1/auGlZ1lr97jXRSSN5MxTgG/zU=
+github.com/oracle/oci-go-sdk v24.3.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
+github.com/oracle/oci-go-sdk/v27 v27.3.0 h1:eK/zcx9apUc6Alne5jh/uTOJ2OHNbOAOYzWEI5G/u+A=
+github.com/oracle/oci-go-sdk/v27 v27.3.0/go.mod h1:TeoXZiKSPNKbPqxykLnSLkdPXK9mY9cR6HIkBJVyi34=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
