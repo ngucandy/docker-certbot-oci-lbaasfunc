@@ -25,6 +25,14 @@ func main() {
 	fdk.Handle(fdk.HandlerFunc(myHandler))
 }
 
+func getEnvOrPanic(key string) string {
+	if value, found := os.LookupEnv(key); found {
+		return value
+	} else {
+		panic("Environment variable not set: " + key)
+	}
+}
+
 func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	fmt.Println("** LBCERT FUNCTION **")
 	var cp common.ConfigurationProvider
@@ -34,26 +42,11 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 		cp = common.DefaultConfigProvider()
 	}
 
-	lbOcid, found := os.LookupEnv("LBCERT_FN_LB_OCID")
-	if !found {
-		lbOcid = "ocid1.loadbalancer.oc1.ca-montreal-1.aaaaaaaargd3kdbuw6rnwwuesrtrrymlbcjuk2es63b6vvnxp4aozj4vefpa"
-	}
-	ns, found := os.LookupEnv("LBCERT_FN_OS_NS")
-	if !found {
-		ns = "ocisateam"
-	}
-	bn, found := os.LookupEnv("LBCERT_FN_OS_BN")
-	if !found {
-		bn = "andynguyen_certbot_bucket"
-	}
-	archivePrefix, found := os.LookupEnv("LBCERT_FN_ARCHIVE_PREFIX")
-	if !found {
-		archivePrefix = "certbot-archive"
-	}
-	domain, found := os.LookupEnv("LBCERT_FN_DOMAIN")
-	if !found {
-		domain = "oci-ateam.com"
-	}
+	lbOcid := getEnvOrPanic("LBCERT_FN_LB_OCID")
+	ns := getEnvOrPanic("LBCERT_FN_OS_NS")
+	bn := getEnvOrPanic("LBCERT_FN_OS_BN")
+	archivePrefix := getEnvOrPanic("LBCERT_FN_ARCHIVE_PREFIX")
+	domain := getEnvOrPanic("LBCERT_FN_DOMAIN")
 	certArchive := archivePrefix + "-" + domain + ".tar.gz"
 
 	osc, err := objectstorage.NewObjectStorageClientWithConfigurationProvider(cp)
