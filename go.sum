@@ -4,6 +4,8 @@ github.com/fnproject/fdk-go v0.0.3 h1:CkUsIH0QmWDb/vDU3lGoP+Fl0VIfk2/xi1v82Qk5vC
 github.com/fnproject/fdk-go v0.0.3/go.mod h1:9m+nEyku9SqJAVJQsfZOZBQzFkCs+jvmbZJhvgDX4ts=
 github.com/oracle/oci-go-sdk/v27 v27.3.0 h1:eK/zcx9apUc6Alne5jh/uTOJ2OHNbOAOYzWEI5G/u+A=
 github.com/oracle/oci-go-sdk/v27 v27.3.0/go.mod h1:TeoXZiKSPNKbPqxykLnSLkdPXK9mY9cR6HIkBJVyi34=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0 h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=

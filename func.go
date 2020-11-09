@@ -15,6 +15,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v27/common/auth"
 	"github.com/oracle/oci-go-sdk/v27/loadbalancer"
 	"github.com/oracle/oci-go-sdk/v27/objectstorage"
+	"github.com/pkg/errors"
 )
 
 func main() {
@@ -25,30 +26,23 @@ func main() {
 	fdk.Handle(fdk.HandlerFunc(myHandler))
 }
 
-func getEnvOrPanic(key string) string {
-	if value, found := os.LookupEnv(key); found {
-		return value
-	} else {
-		panic("Environment variable not set: " + key)
-	}
-}
-
-func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
-	fmt.Println("** LBCERT FUNCTION **")
-	var cp common.ConfigurationProvider
+func getConfigurationProvider() common.ConfigurationProvider {
 	cp, err := auth.ResourcePrincipalConfigurationProvider()
 	if err != nil {
 		fmt.Println(err)
-		cp = common.DefaultConfigProvider()
+		return common.DefaultConfigProvider()
 	}
+	return cp
+}
 
-	lbOcid := getEnvOrPanic("LBCERT_FN_LB_OCID")
-	ns := getEnvOrPanic("LBCERT_FN_OS_NS")
-	bn := getEnvOrPanic("LBCERT_FN_OS_BN")
-	archivePrefix := getEnvOrPanic("LBCERT_FN_ARCHIVE_PREFIX")
-	domain := getEnvOrPanic("LBCERT_FN_DOMAIN")
-	certArchive := archivePrefix + "-" + domain + ".tar.gz"
+func getEnvOrPanic(key string) string {
+	if value, found := os.LookupEnv(key); found {
+		return value
+	}
+	panic("Environment variable not set: " + key)
+}
 
+func getLiveCerts(cp common.ConfigurationProvider, ns, bn, certArchive string) (map[string]map[string]string, error) {
 	osc, err := objectstorage.NewObjectStorageClientWithConfigurationProvider(cp)
 	if err != nil {
 		panic(err)
@@ -59,8 +53,7 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 		ObjectName:    common.String(certArchive),
 	})
 	if err != nil {
-		fmt.Printf("Unable to find certbot archive: /n/%s/b/%s/o/%s\n", ns, bn, certArchive)
-		return
+		return nil, errors.Wrapf(err, "Unable to find certbot archive: /n/%s/b/%s/o/%s", ns, bn, certArchive)
 	}
 	fmt.Println("** DOWNLOADING CERTIFICATE ARCHIVE **")
 	osresp, err := osc.GetObject(context.Background(), objectstorage.GetObjectRequest{
@@ -69,11 +62,11 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 		ObjectName:    common.String(certArchive),
 	})
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, "Failed to download archive")
 	}
 	zr, err := gzip.NewReader(osresp.Content)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, "Failed to create gzip reader")
 	}
 	defer osresp.Content.Close()
 	defer zr.Close()
@@ -85,11 +78,14 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
+			err = nil
 			break // End of archive
 		}
+
 		if err != nil {
-			panic(err)
+			return nil, errors.Wrap(err, "Failed reading tar")
 		}
+
 		// process PEM files
 		if strings.HasSuffix(hdr.Name, ".pem") {
 			// examples:
@@ -100,13 +96,14 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 			pemDomain := pemSplit[len(pemSplit)-2]
 			pemType := pemSplit[len(pemSplit)-3]
 			fmt.Println(pemType + "/" + pemDomain + "/" + pemFile)
+
 			switch pemType {
 			case "archive":
 				// archive directory contains PEM contents
 				// store these in a map
 				buf.Reset()
 				if _, err := io.Copy(buf, tr); err != nil {
-					panic(err)
+					return nil, errors.Wrap(err, "Failed reading PEM contents from tar")
 				}
 				if pems[pemDomain] == nil {
 					pems[pemDomain] = make(map[string]string)
@@ -130,6 +127,26 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 			live[pemDomain][pemFile] = pems[pemDomain][pemSplit[len(pemSplit)-1]]
 		}
 	}
+
+	return live, nil
+}
+
+func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
+	fmt.Println("** LBCERT FUNCTION **")
+
+	cp := getConfigurationProvider()
+	lbOcid := getEnvOrPanic("LBCERT_FN_LB_OCID")
+	ns := getEnvOrPanic("LBCERT_FN_OS_NS")
+	bn := getEnvOrPanic("LBCERT_FN_OS_BN")
+	archivePrefix := getEnvOrPanic("LBCERT_FN_ARCHIVE_PREFIX")
+	domain := getEnvOrPanic("LBCERT_FN_DOMAIN")
+	certArchive := archivePrefix + "-" + domain + ".tar.gz"
+
+	live, err := getLiveCerts(cp, ns, bn, certArchive)
+	if err != nil {
+		panic(err)
+	}
+
 	cert := live[domain]["fullchain.pem"]
 	if len(cert) == 0 {
 		panic(fmt.Sprintf("Unable to find certificate %s/fullchain.pem in archive", domain))
