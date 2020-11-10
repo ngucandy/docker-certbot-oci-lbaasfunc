@@ -42,12 +42,12 @@ func getEnvOrPanic(key string) string {
 	panic("Environment variable not set: " + key)
 }
 
-func getLiveCerts(cp common.ConfigurationProvider, ns, bn, certArchive string) (map[string]map[string]string, error) {
+func getLiveCerts(ctx context.Context, cp common.ConfigurationProvider, ns, bn, certArchive string) (map[string]map[string]string, error) {
 	osc, err := objectstorage.NewObjectStorageClientWithConfigurationProvider(cp)
 	if err != nil {
 		panic(err)
 	}
-	_, err = osc.HeadObject(context.Background(), objectstorage.HeadObjectRequest{
+	_, err = osc.HeadObject(ctx, objectstorage.HeadObjectRequest{
 		NamespaceName: common.String(ns),
 		BucketName:    common.String(bn),
 		ObjectName:    common.String(certArchive),
@@ -56,7 +56,7 @@ func getLiveCerts(cp common.ConfigurationProvider, ns, bn, certArchive string) (
 		return nil, errors.Wrapf(err, "Unable to find certbot archive: /n/%s/b/%s/o/%s", ns, bn, certArchive)
 	}
 	fmt.Println("** DOWNLOADING CERTIFICATE ARCHIVE **")
-	osresp, err := osc.GetObject(context.Background(), objectstorage.GetObjectRequest{
+	osresp, err := osc.GetObject(ctx, objectstorage.GetObjectRequest{
 		NamespaceName: common.String(ns),
 		BucketName:    common.String(bn),
 		ObjectName:    common.String(certArchive),
@@ -131,6 +131,24 @@ func getLiveCerts(cp common.ConfigurationProvider, ns, bn, certArchive string) (
 	return live, nil
 }
 
+/*
+func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient, lbOcid, certName, cert, privkey string) error {
+	resp, err := lbc.CreateCertificate(ctx, loadbalancer.CreateCertificateRequest{
+		LoadBalancerId: common.String(lbOcid),
+		CreateCertificateDetails: loadbalancer.CreateCertificateDetails{
+			CertificateName:   common.String(certName),
+			PublicCertificate: common.String(cert),
+			PrivateKey:        common.String(privkey),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	resp.OpcWorkRequestId
+
+}
+*/
+
 func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	fmt.Println("** LBCERT FUNCTION **")
 
@@ -142,7 +160,7 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	domain := getEnvOrPanic("LBCERT_FN_DOMAIN")
 	certArchive := archivePrefix + "-" + domain + ".tar.gz"
 
-	live, err := getLiveCerts(cp, ns, bn, certArchive)
+	live, err := getLiveCerts(ctx, cp, ns, bn, certArchive)
 	if err != nil {
 		panic(err)
 	}
@@ -158,11 +176,12 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	}
 	fmt.Println(privkey)
 
-	lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(cp)
+	lbc, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(cp)
 	if err != nil {
 		panic(err)
 	}
-	resp, err := lb.GetLoadBalancer(context.Background(), loadbalancer.GetLoadBalancerRequest{
+
+	resp, err := lbc.GetLoadBalancer(ctx, loadbalancer.GetLoadBalancerRequest{
 		LoadBalancerId: common.String(lbOcid),
 	})
 	if err != nil {
