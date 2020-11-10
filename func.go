@@ -4,11 +4,14 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	fdk "github.com/fnproject/fdk-go"
 	"github.com/oracle/oci-go-sdk/v27/common"
@@ -131,6 +134,18 @@ func getLiveCerts(ctx context.Context, cp common.ConfigurationProvider, ns, bn, 
 	return live, nil
 }
 
+func readExpiry(ctx context.Context, cert string) time.Time {
+	block, _ := pem.Decode([]byte(cert))
+	if block == nil {
+		panic("Failed to parse certificate in fullchain.pem")
+	}
+	x509cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	return x509cert.NotAfter
+}
+
 /*
 func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient, lbOcid, certName, cert, privkey string) error {
 	resp, err := lbc.CreateCertificate(ctx, loadbalancer.CreateCertificateRequest{
@@ -170,6 +185,9 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 		panic(fmt.Sprintf("Unable to find certificate %s/fullchain.pem in archive", domain))
 	}
 	fmt.Println(cert)
+	certExpiry := readExpiry(ctx, cert)
+	fmt.Println("Certficiate expires: " + certExpiry.Format("20060102"))
+
 	privkey := live[domain]["privkey.pem"]
 	if len(privkey) == 0 {
 		panic(fmt.Sprintf("Unable to find private key %s/privkey.pem in archive", domain))
