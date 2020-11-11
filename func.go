@@ -217,8 +217,7 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 		panic(err)
 	}
 
-	createCertificate(ctx, lbc, lbOcid, certName, cert, privkey)
-
+	fmt.Println("** ACCESSING LOAD BALANCER **")
 	resp, err := lbc.GetLoadBalancer(ctx, loadbalancer.GetLoadBalancerRequest{
 		LoadBalancerId: common.String(lbOcid),
 	})
@@ -226,9 +225,18 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 		panic(err)
 	}
 
-	for _, value := range resp.LoadBalancer.Listeners {
-		if value.SslConfiguration != nil {
-			b, err := json.Marshal(value)
+	if _, exists := resp.LoadBalancer.Certificates[certName]; exists {
+		fmt.Println("Certificate already exists: " + certName)
+		return
+	}
+
+	createCertificate(ctx, lbc, lbOcid, certName, cert, privkey)
+	fmt.Println("** UPDATING LISTENERS WITH NEW CERTFICIATE **")
+	for _, listener := range resp.LoadBalancer.Listeners {
+		// TODO: use multiple threads
+		if listener.SslConfiguration != nil {
+			fmt.Println(listener.Name)
+			b, err := json.Marshal(listener)
 			if err != nil {
 				panic(err)
 			}
@@ -237,8 +245,16 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 			if err != nil {
 				panic(err)
 			}
-			uld.SslConfiguration.CertificateName = common.String("new_certificate")
-			fmt.Println(uld)
+			uld.SslConfiguration.CertificateName = common.String(certName)
+			ulResp, err := lbc.UpdateListener(ctx, loadbalancer.UpdateListenerRequest{
+				UpdateListenerDetails: uld,
+				LoadBalancerId:        common.String(lbOcid),
+				ListenerName:          listener.Name,
+			})
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(ulResp)
 		}
 	}
 
