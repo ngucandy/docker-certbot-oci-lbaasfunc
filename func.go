@@ -146,8 +146,9 @@ func readExpiry(ctx context.Context, cert string) time.Time {
 	return x509cert.NotAfter
 }
 
-/*
-func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient, lbOcid, certName, cert, privkey string) error {
+func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient, lbOcid, certName, cert, privkey string) {
+	fmt.Println("** CREATING NEW CERTIFICATE **")
+	fmt.Println(certName)
 	resp, err := lbc.CreateCertificate(ctx, loadbalancer.CreateCertificateRequest{
 		LoadBalancerId: common.String(lbOcid),
 		CreateCertificateDetails: loadbalancer.CreateCertificateDetails{
@@ -157,12 +158,31 @@ func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient,
 		},
 	})
 	if err != nil {
-		return err
+		panic(err)
 	}
-	resp.OpcWorkRequestId
 
+	// wait up to 30 secs for certificate creation
+	shouldRetryFunc := func(r common.OCIOperationResponse) bool {
+		if converted, ok := r.Response.(loadbalancer.GetWorkRequestResponse); ok {
+			return converted.LifecycleState != loadbalancer.WorkRequestLifecycleStateSucceeded
+		}
+		return true
+	}
+	fixedDurationFunc := func(r common.OCIOperationResponse) time.Duration {
+		return time.Duration(5) * time.Second
+	}
+	policy := common.NewRetryPolicy(6, shouldRetryFunc, fixedDurationFunc)
+	workResp, err := lbc.GetWorkRequest(ctx, loadbalancer.GetWorkRequestRequest{
+		WorkRequestId: resp.OpcWorkRequestId,
+		RequestMetadata: common.RequestMetadata{
+			RetryPolicy: &policy,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Creating certficiate took %v\n", workResp.TimeFinished.Time.Sub(workResp.TimeAccepted.Time))
 }
-*/
 
 func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	fmt.Println("** LBCERT FUNCTION **")
@@ -184,20 +204,20 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	if len(cert) == 0 {
 		panic(fmt.Sprintf("Unable to find certificate %s/fullchain.pem in archive", domain))
 	}
-	fmt.Println(cert)
 	certExpiry := readExpiry(ctx, cert)
-	fmt.Println("Certficiate expires: " + certExpiry.Format("20060102"))
+	certName := strings.Join([]string{"cert", domain, certExpiry.Format("20060102")}, "_")
 
 	privkey := live[domain]["privkey.pem"]
 	if len(privkey) == 0 {
 		panic(fmt.Sprintf("Unable to find private key %s/privkey.pem in archive", domain))
 	}
-	fmt.Println(privkey)
 
 	lbc, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(cp)
 	if err != nil {
 		panic(err)
 	}
+
+	createCertificate(ctx, lbc, lbOcid, certName, cert, privkey)
 
 	resp, err := lbc.GetLoadBalancer(ctx, loadbalancer.GetLoadBalancerRequest{
 		LoadBalancerId: common.String(lbOcid),
