@@ -161,7 +161,9 @@ func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient,
 		panic(err)
 	}
 
-	// wait up to 30 secs for certificate creation
+	// wait up to 60 secs for certificate creation
+	waitSecs := 5
+	maxRetries := 12
 	shouldRetryFunc := func(r common.OCIOperationResponse) bool {
 		if converted, ok := r.Response.(loadbalancer.GetWorkRequestResponse); ok {
 			return converted.LifecycleState != loadbalancer.WorkRequestLifecycleStateSucceeded
@@ -169,9 +171,9 @@ func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient,
 		return true
 	}
 	fixedDurationFunc := func(r common.OCIOperationResponse) time.Duration {
-		return time.Duration(5) * time.Second
+		return time.Duration(waitSecs) * time.Second
 	}
-	policy := common.NewRetryPolicy(6, shouldRetryFunc, fixedDurationFunc)
+	policy := common.NewRetryPolicy(uint(maxRetries), shouldRetryFunc, fixedDurationFunc)
 	workResp, err := lbc.GetWorkRequest(ctx, loadbalancer.GetWorkRequestRequest{
 		WorkRequestId: resp.OpcWorkRequestId,
 		RequestMetadata: common.RequestMetadata{
@@ -179,7 +181,13 @@ func createCertificate(ctx context.Context, lbc loadbalancer.LoadBalancerClient,
 		},
 	})
 	if err != nil {
+		fmt.Println(workResp.ErrorDetails)
 		panic(err)
+	}
+	if workResp.TimeFinished == nil {
+		msg := fmt.Sprintf("Certificate creation failed to finish after %ds", maxRetries*waitSecs)
+		fmt.Println(msg)
+		panic(fmt.Errorf(msg))
 	}
 	fmt.Printf("Creating certficiate took %v\n", workResp.TimeFinished.Time.Sub(workResp.TimeAccepted.Time))
 }
@@ -254,7 +262,7 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println(ulResp)
+			fmt.Println(ulResp.OpcWorkRequestId)
 		}
 	}
 
