@@ -243,7 +243,7 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 	for _, listener := range resp.LoadBalancer.Listeners {
 		// TODO: use multiple threads
 		if listener.SslConfiguration != nil {
-			fmt.Println(listener.Name)
+			fmt.Println(*listener.Name)
 			b, err := json.Marshal(listener)
 			if err != nil {
 				panic(err)
@@ -262,7 +262,7 @@ func myHandler(ctx context.Context, in io.Reader, out io.Writer) {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println(ulResp.OpcWorkRequestId)
+			fmt.Println("Work request submitted: " + *ulResp.OpcWorkRequestId)
 		}
 	}
 
