@@ -14,10 +14,10 @@ import (
 	"time"
 
 	fdk "github.com/fnproject/fdk-go"
-	"github.com/oracle/oci-go-sdk/v27/common"
-	"github.com/oracle/oci-go-sdk/v27/common/auth"
-	"github.com/oracle/oci-go-sdk/v27/loadbalancer"
-	"github.com/oracle/oci-go-sdk/v27/objectstorage"
+	"github.com/oracle/oci-go-sdk/v28/common"
+	"github.com/oracle/oci-go-sdk/v28/common/auth"
+	"github.com/oracle/oci-go-sdk/v28/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v28/objectstorage"
 	"github.com/pkg/errors"
 )
 
